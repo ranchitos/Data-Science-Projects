@@ -1,0 +1,309 @@
+---
+title: "Petty Crime in Seattle Analysis"
+author: "Ranch"
+date: today
+format:
+  html:
+    embed-resources: true
+    message: false
+    warning: false
+    
+---
+## Loading the data
+```{r}
+echo = TRUE
+results= "hide"
+message = FALSE
+warning = FALSE
+
+library("tidyverse")
+
+crime_data <- read.csv("SPD_Crime_Data__2008-Present_20250228.csv", stringsAsFactors = FALSE)
+
+# displaying the crime data
+crime_data |>
+  glimpse()
+```
+## Filter data to violent crime
+```{r}
+violent_crime_data <- crime_data |>
+  filter(Crime.Against.Category == "PERSON")
+violent_crime_data
+```
+
+
+
+## Filter the data to only petty crime
+From 1, 175, 457 rows, it became 995, 494 rows
+```{r}
+echo = TRUE
+results='hide'
+message = FALSE
+warning = FALSE
+petty_crime_data <- crime_data |>
+  filter(Crime.Against.Category == "PROPERTY" | Crime.Against.Category == "SOCIETY")
+
+petty_crime_data |>
+  glimpse()
+```
+## Total petty crimes per month
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+library(plotly)
+
+# convert to proper date time format 
+petty_crime_data <- petty_crime_data |>
+  mutate(Offense.Start.DateTime = mdy_hms(Offense.Start.DateTime, tz = "America/Los_Angeles"))
+
+# Then: plot by month
+plot <- petty_crime_data |>
+  mutate(month = month(Offense.Start.DateTime, label = TRUE)) |>
+  group_by(month) |>
+  summarize(total_crimes = n()) |>
+  ggplot(aes(x = month, y = total_crimes)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Petty Crimes in Seattle by Month",
+    x = "Month",
+    y = "Number of Petty Crimes"
+  ) +
+  theme_minimal()
+
+str(petty_crime_data$Offense.Start.DateTime)
+
+ggplotly(plot)
+```
+
+## Total petty crimes per year
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+# First, extract the year from Offense.Start.DateTime
+petty_crime_data <- petty_crime_data %>%
+  mutate(year = year(Offense.Start.DateTime))
+
+# Group and count petty crimes per year
+yearly_crimes <- petty_crime_data %>%
+  group_by(year) %>%
+  summarize(total_crimes = n())
+
+# Plot
+plot <- yearly_crimes |>
+  ggplot(aes(x = year, y = total_crimes)) +
+  geom_line(color = "darkgreen", linewidth = 1) +
+  geom_point(color = "black", linewidth = 2) +
+  scale_x_continuous(limits = c(2008,2024)) +
+  labs(
+    title = "Highest Petty Crime Count is 2020",
+    x = "Year",
+    y = "Number of Petty Crimes"
+  ) +
+  theme_minimal()
+ggplotly(plot)
+```
+
+## Analyzing Petty Crimes by Category
+We can break down these crimes by categories to observe if certain types of petty crimes are more prevalent
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+# Group by 'Crime.Against.Category' and 'month'
+category_trends <- petty_crime_data %>%
+  mutate(month = month(Offense.Start.DateTime, label = TRUE)) %>%
+  group_by(month, Crime.Against.Category) %>%
+  summarize(total_crimes = n())
+
+# Plot crimes by category
+plot <- category_trends |>
+  ggplot(aes(x = month, y = total_crimes, fill = Crime.Against.Category)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "There are more Property Crimes than Society Crimes in Seattle",
+    subtitle = "Petty Crimes by Category in Seattle by Month",
+    x = "Month",
+    y = "Number of Crimes"
+  ) +
+  theme_minimal()
+ggplotly(plot)
+```
+
+## Analyzing specific crime types and their frequency
+We could go deeper and look at the specific crime types and how frequent they are
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+# Group by 'Offense.Parent.Group' and 'month'
+crime_type_trends <- petty_crime_data %>%
+  mutate(month = month(Offense.Start.DateTime, label = TRUE)) %>%
+  group_by(month, Offense.Parent.Group) %>%
+  summarize(total_crimes = n())
+
+# Plot the crime types
+plot <- crime_type_trends |>
+  ggplot(aes(x = month, y = total_crimes, fill = Offense.Parent.Group)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Larcency Theft is the most Frequent Type of Crime",
+    x = "Month",
+    y = "Number of Crimes"
+  ) +
+  theme_minimal()
+ggplotly(plot)
+```
+
+# Time of Day Analysis
+We could look at how petty crimes are distributed throughout the day
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+# Extract hour of the day directly — no need to re-parse it
+petty_crime_data <- petty_crime_data %>%
+  mutate(hour = hour(Offense.Start.DateTime))
+
+# Group by hour and plot
+hourly_crimes <- petty_crime_data %>%
+  group_by(hour) %>%
+  summarize(total_crimes = n())
+
+plot <- hourly_crimes |>
+  ggplot(aes(x = hour, y = total_crimes)) +
+  geom_line(color = "steelblue") +
+  labs(
+    title = "Petty Crimes often occur at midnight",
+    x = "Hour of Day",
+    y = "Number of Crimes"
+  ) +
+  theme_minimal()
+ggplotly(plot)
+```
+
+## Heatmap of Violent Crime Data
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+library(plotly)
+library(hexbin)
+
+violent_crime_data <- violent_crime_data |>
+  filter(Longitude > -125 & Longitude < -120,
+         Latitude > 47 & Latitude < 48)
+
+plot <- violent_crime_data |>
+  ggplot(aes(x = Longitude, y = Latitude)) +
+  geom_hex(bins = 50) +
+  scale_fill_viridis_c(option = "inferno") +
+  labs(
+    title = "Violent Crime in Seattle from 2008 to Present",
+    x = "Longitude",
+    y = "Latitude",
+    caption = "Data obtained from: https://data.seattle.gov/Public-Safety/SPD-Crime-Data-2008-Present/tazs-3rd5/about_data"
+  ) + 
+  theme_minimal()
+
+ggplotly(plot)
+```
+
+
+## Heatmap of Petty Crime Data
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+library(hexbin)
+
+petty_crime_data <- petty_crime_data |>
+  filter(Longitude > -125 & Longitude < -120,
+         Latitude > 47 & Latitude < 48)
+
+plot <- petty_crime_data |>
+  ggplot(aes(x = Longitude, y = Latitude)) +
+  geom_hex(bins = 50) +
+  scale_fill_viridis_c(option = "inferno") +
+  labs(
+    title = "Petty Crime in Seattle from 2008 to Present",
+    x = "Longitude",
+    y = "Latitude",
+    caption = "Data obtained from: https://data.seattle.gov/Public-Safety/SPD-Crime-Data-2008-Present/tazs-3rd5/about_data"
+  ) + 
+  theme_minimal()
+
+ggplotly(plot)
+```
+
+```{r}
+library(ggplot2)
+library(plotly)
+library(dplyr)
+
+# Add a hover text field with MCPP and coordinates
+petty_crime_data <- petty_crime_data %>%
+  mutate(hover_text = paste0(
+    "Neighborhood: ", MCPP, "<br>",
+    "Longitude: ", round(Longitude, 4), "<br>",
+    "Latitude: ", round(Latitude, 4)
+  ))
+
+# Plot with geom_hex and pass hover text
+plot <- ggplot(petty_crime_data, aes(x = Longitude, y = Latitude, text = hover_text)) +
+  geom_hex(bins = 50, aes(fill = ..count..)) +
+  scale_fill_viridis_c(option = "inferno", limits = c(0, 10000), name = "Crime Count") +
+  labs(
+    title = "Petty Crime in Seattle from 2008 to Present",
+    x = "Longitude",
+    y = "Latitude"
+  ) +
+  theme_minimal()
+
+ggplotly(plot, tooltip = "text")
+```
+
+
+## Determing petty crime count on every neighborhood and by block address
+```{r}
+echo = FALSE
+message = FALSE
+warning = FALSE
+
+# Crime count by MCPP (neighborhood)
+crime_by_neighborhood <- petty_crime_data |>
+  group_by(MCPP) |>
+  summarise(Crime_Count = n()) |>
+  arrange(desc(Crime_Count))
+
+# View top neighborhoods
+crime_by_neighborhood |> 
+  head(10)
+
+# Summarize crime count by block address
+crime_by_block <- petty_crime_data |>
+  group_by(X100.Block.Address) |>
+  summarise(Crime_Count = n()) |>
+  arrange(desc(Crime_Count))
+
+# View top block addresses with the highest crime count
+crime_by_block |> 
+  head(10)
+```
+
+
+## Key Findings:
+<ul>
+  <li>Highest Number of Petty Crimes happened in 2020</li>
+  <li>Larcency Theft is the most frequent type of crime</li>
+  <li>Peak Crime Time -> Midnight</li>
+  <li>There are more property crimes that society crimes</li>
+  <li>The heatmap is similar to the original</li>
+  <li>The top neighborhoods and block addresses are also similar</li>
+</ul>
