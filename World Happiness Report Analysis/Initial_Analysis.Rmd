@@ -1,0 +1,214 @@
+---
+title: 'Initial Analysis: Relationship Between Economic Prosperity and Life Evaluation
+  Expectancy Across Countries'
+author: "Rafael Juancho San Jose"
+date: "2025-12-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Research Question
+What is the relationship between economic prosperity and life evaluation across countries from 2021
+to 2024?
+
+## Hypothesis
+I hypothesize that:
+
+1) **Higher log GDP per capita** will be associated with **higher life evaluation**.
+
+2) However, **GDP alone will not fully explain differences in life evaluation**, because:
+
+- Countries with **higher social support** likely experience better health outcomes, even at similar income
+levels.
+
+- Countries with **higher perceptions of corruption** may have weaker public institutions, potentially 
+reducing health system effectiveness.
+
+Therefore, social and institutional factors (e.g., support networks and corruption perceptions) will partially mediate or modify the relationship between GDP and life evaluation.
+
+## Variables
+Each variable is measured on a Cantril ladder score on a scale of 0-10.
+
+1) Outcome Variable - Life Evaluation (3-year average)
+
+2) Primary Explanatory Variable - Log GDP per capita
+
+3) Additional Explanatory Variables - social support, healthy life expectancy, freedom, generosity,
+corruption
+
+```{r, message=FALSE, echo=FALSE}
+# libraries
+library(readxl)
+library(dplyr)
+```
+
+## Load the dataset
+
+```{r}
+# load excel file
+df <- read_excel("WHR25_Data_Figure_2.1v3 (1).xlsx")
+head(df)
+```
+
+## Data Cleaning
+
+```{r}
+# rename variables
+df <- df %>%
+  rename(
+    country = "Country name",
+    life_eval = "Life evaluation (3-year average)",
+    log_gdp = "Explained by: Log GDP per capita",
+    social_support = "Explained by: Social support",
+    healthy_life = "Explained by: Healthy life expectancy",
+    freedom = "Explained by: Freedom to make life choices",
+    generosity = "Explained by: Generosity",
+    corruption = "Explained by: Perceptions of corruption"
+  )
+```
+
+```{r}
+# filter for years 2021 - 2024
+df <- df %>%
+  filter(Year >= 2021, Year <= 2024) %>%
+  
+  # select only variables used for analysis
+  select(Year, country, life_eval, log_gdp, social_support,
+         healthy_life, freedom, generosity, corruption)
+```
+
+```{r}
+# remove NA values
+df <- na.omit(df)
+head(df)
+```
+
+
+## Summary Statistics
+```{r}
+summary(df)
+```
+
+## Plots of Key Dependent and Explanatory Variables
+
+```{r}
+# scatter plot of life_eval and log_gdp
+plot(df$log_gdp, df$life_eval,
+     xlab = "Log GDP per Capita",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Log GDP per Capita")
+```
+```{r}
+# correlation coefficient of life evaluation and log gdp per capita
+cor(df$life_eval, df$log_gdp)
+```
+Life Evaluation is strongly positively correlated with Log GDP per capita, indicating that countries with
+higher GDP per capita tend to have higher life evaluation scores. Correlation coefficient is around 0.76.
+
+```{r}
+# scatter plot of life_eval and social_support
+plot(df$social_support, df$life_eval,
+     xlab = "Social Support",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Social Support")
+```
+```{r}
+# correlation coefficient of life evaluation and social support
+cor(df$life_eval, df$social_support)
+```
+Life Evaluation is strongly positively correlated with social support, indicating that countries with
+higher social support tend to have higher life evaluation scores. Correlation coefficient is around 0.74.
+
+```{r}
+# scatter plot of life_eval and healthy_life
+plot(df$healthy_life, df$life_eval,
+     xlab = "Healthy Life Expectancy",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Healthy Life Expectancy")
+```
+```{r}
+# correlation coefficient of life evaluation and healthy life
+cor(df$life_eval, df$healthy_life)
+```
+Life Evaluation is moderately positively correlated with healthy life expectancy, indicating that countries with
+higher healthy life expectancy tend to have higher life evaluation scores. Correlation coefficient is 
+around 0.67. It's slightly weaker than the correlations for log_gdp (~0.76) and social support (~0.74)
+but still meaningful.
+
+```{r}
+# scatter plot of life_eval and freedom
+plot(df$freedom, df$life_eval,
+     xlab = "Freedom",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Freedom")
+```
+```{r}
+# correlation coefficient of life evaluation and freedom
+cor(df$life_eval, df$freedom)
+```
+Life Evaluation is moderately positively correlated with freedom to make life choices, indicating that countries where people report more freedom tend to have higher life evaluation scores, although this 
+linear association is weaker than that of GDP, social support, or healthy life expectancy. 
+Correlation coefficient is around 0.56.
+
+```{r}
+# scatter plot of life_eval and generosity 
+plot(df$generosity, df$life_eval,
+     xlab = "Generosity",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Generosity")
+```
+```{r}
+# correlation coefficient of life evaluation and generosity
+cor(df$life_eval, df$generosity)
+```
+Life Evaluation shows almost no linear association with Generosity , suggesting that differences in generosity across countries do not have a strong linear association to differences in life 
+evaluation scores.Correlation coefficient is around 0.07.
+
+```{r}
+# scatter plot of life_eval and corruption
+plot(df$corruption, df$life_eval,
+     xlab = "Corruption",
+     ylab = "Life Evaluation",
+     main = "Life Evaluation vs Corruption")
+```
+```{r}
+# correlation coefficient of life evaluation and corruption
+cor(df$life_eval, df$corruption)
+```
+Life Evaluation is moderately positively correlated with Perceptions of Corruption, indicating that countries with lower perceived corruption tend to report higher life evaluation scores. Correlation
+coefficient is around 0.44.
+
+
+## Main Regression
+
+```{r}
+# multiple linear regression
+fit <- lm(life_eval ~ log_gdp + social_support + healthy_life + freedom + corruption, data = df)
+summary(fit)
+```
+We ran a multiple linear regression with Life Evaluation as the dependent variable and five explanatory 
+variables: Log GDP per capita, Social Support, Healthy Life Expectancy, Freedom to make life choices, and
+Perceptions of Corruption. 
+
+All five predictors are positively associated with Life Evaluation. Specifically, holding other factors constant:
+
+ - A 1-unit increase in Log GDP per capita is associated with an increase of approximately 0.98 points in Life Evaluation.
+ - A 1-unit increase in Social Support increases Life Evaluation by ~1.01 points.
+ - Healthy Life Expectancy contributes ~0.84 points per unit.
+ - Freedom to make life choices adds ~1.10 points.
+ - Higher Perceptions of Corruption contribute ~1.06 points (note: higher values indicate lower corruption).
+ 
+All coefficients are highly statistically significant (p < 0.001), indicating that these variables reliably predict differences in Life Evaluation across countries.
+
+These results support our hypothesis that GDP alone does not fully explain Life Evaluation; social 
+support, freedom, and corruption also play meaningful roles. The positive coefficients align with the 
+expectation that higher income, stronger social networks, greater freedom, and lower corruption are 
+associated with higher reported life evaluation.
+
+```{r}
+df
+```
+

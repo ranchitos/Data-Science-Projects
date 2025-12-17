@@ -1,0 +1,312 @@
+---
+title: "Final Project"
+author: "Rafael Juancho San Jose"
+date: "2025-12-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, include=FALSE}
+# libraries
+library(readxl)
+library(dplyr)
+library(stargazer)
+
+# load the data
+df <- read_excel("WHR25_Data_Figure_2.1v3 (1).xlsx")
+
+# rename variables
+df <- df %>%
+  rename(
+    country = "Country name",
+    life_eval = "Life evaluation (3-year average)",
+    log_gdp = "Explained by: Log GDP per capita",
+    social_support = "Explained by: Social support",
+    healthy_life = "Explained by: Healthy life expectancy",
+    freedom = "Explained by: Freedom to make life choices",
+    generosity = "Explained by: Generosity",
+    corruption = "Explained by: Perceptions of corruption"
+  )
+
+# filter for years 2021 - 2024
+df <- df %>%
+  filter(Year >= 2021, Year <= 2024) %>%
+  
+  # select only variables used for analysis
+  select(Year, country, life_eval, log_gdp, social_support,
+         healthy_life, freedom, generosity, corruption)
+
+# remove NA values
+df <- na.omit(df)
+```
+# Introduction
+
+Across the world, national wealth is commonly assumed to translate directly into a better life for
+citizens. Yet recent findings from the World Happiness Report reveal a puzzling pattern.
+**Countries with high economic prosperity do not always achieve correspondingly high levels of life evaluation**.
+The United States, for example, consistently ranks among the richest nations in terms of GDP per capita
+but lags behind several lower-income countries in life satisfaction. This discrepancy raises an important
+question about what truly drives human well-being and whether economic growth alone is sufficient to
+improve people's lived experiences.
+
+To contribute to understanding this puzzle, this project analyzes data from the **World Happiness Report (2021-2024)**,
+covering **566 country-year observations** across dozens of nations. The **unit of analysis** is the
+**country-year**, and the outcome variable is **life evaluation**, a 0-10 measure of how individuals
+assess their overall life quality. The main explanatory variable is **log GDP per capita**, representing
+economic prosperity. Additional variables are **social support**, **healthy life expectancy**,
+**freedom to make life choices**, **generosity**, **perceptions of corruption**. This leads to the central
+research question: **How strongly is log GDP per capita associated with life evaluation across countries, and do social and institutional factors help explain cross national differences?**
+
+
+# Theory and Hypothesis
+
+Understanding why economic prosperity does not always translate into higher life evaluation has been a
+central question in the study of well-being. While GDP per capita is often used as a proxy for national
+progress, prior research shows that income alone may be insufficient to explain how people assess their
+overall life satisfaction. This project seeks to explain **why countries with similar levels of economic development differ in reported well-being**,
+and whether social and institutional conditions account for part of this variation.
+
+A large body of research in economics and psychology highlights the limits of income as a driver of
+subjective well-being. The **Easterlin Paradox** argues that increases in national income do not
+continuously raise happiness once basic needs are met, suggesting diminishing returns to wealth
+(Easterlin 1974). Other studies emphasize the role of **social supportc**, **trust in institutions**, and **health** in shaping individuals' life satisfaction **(Helliwell & Putnam 2004; Deaton 2008; Helliwell 2003)**. 
+Cross-national analyses consistently find that people report higher well- being when they feel supported by communities, perceive governments as fair and trustworthy, enjoy strong physical health and longevity
+**(Diener & Biswas-Diener 2002; Inglehart et al. 2008)**. Together, these findings imply that well-being is multidimensional and shaped by more than economic resources alone.
+
+Based on this literature, the causal mechanism is that **economic prosperity (X)** influences **life evaluation (Y)**
+partially through its effect on social and institutional factors. Income may improve well-being by
+enabling access to healthcare, improving living standards, and supporting stable social environments.
+However, when social support is weak, corruption is high, or individuals lack freedom in making life
+choices, these institutional shortcomings may limit the impact of GDP on subjective well-being. Thus,
+countries with similar economic output may yield different well-being outcomes depending on social
+structures and governance quality.
+
+From this theoretical foundation, the following hypotheses are developed:
+
+- $H_0$ (Null Hypothesis): Log GDP per capita has no association with life evaluation once social support,
+health, freedom, and corruption are accounted for.
+$$
+\beta_{log~GDP} = 0
+$$
+- $H_1$ (Alternative Hypothesis): Log GDP per capita is positively associated with life evaluation even
+after accounting for social support, health, freedom, and corruption.
+$$
+\beta_{log~GDP} > 0
+$$
+These hypotheses reflect the expectation supported by previous research that economic prosperity improves
+well-being, but its impact is only partial, with social and institutional factors also playing meaningful
+roles.
+
+
+# Data and Visual Analysis
+## Data
+
+This project uses data from **World Happiness Report** covering years **2021-2024**. After filtering to
+include only these years and removing incomplete cases, the final dataset contains **566 country-year observations**.
+The **unit of analysis** is the country-year, meaning each row represents a specific country observed in
+a specific year.
+
+The dataset is **observational**, not experimental because no treatment was randomly assigned, causal
+inference is limited. Instead the analysis focuses on identifying associations between economic, social,
+and institutional factors and the outcome variable, **Life Evaluation**. Potential confounding is likely,
+especially because variables such as social support, perceptions of corruption, and health are correlated
+with each other and with GDP. No variable transformations were necessary beyond renaming, since all 
+variables are already scaled on comparable 0-10 Cantril ladder units.
+
+
+```{r, results='asis', echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+dat_des <- df[,c("life_eval", "log_gdp", "social_support", "healthy_life", "freedom", "generosity",
+                   "corruption")]
+
+stargazer(as.data.frame(dat_des), # input the object "as.data.frame" for descriptives
+          summary.stat = c("mean","sd","min","median","max"),
+          type="latex",
+          header = FALSE,
+          title = "Descriptive statistics",
+          digits = 2, 
+          float = FALSE)
+
+# Display a correlation matrix
+
+# create an object with the correlation matrix
+
+dat_cor <- cor(dat_des)
+
+# Now we need to format the correlation matrix, start rounding the digits
+
+dat_cor <- round(dat_cor, digits = 2)
+
+# display the correlation matrix in a formmatted table using stargazer
+
+stargazer(dat_cor, 
+          type="latex",
+          title = "Correlation matrix",
+          column.sep.width = "1pt",
+          header = FALSE, 
+          digits = 2,
+          float = FALSE)
+```
+
+
+The table shows considerable variation across the dataset. **Life Evaluation** averages 5.55, with a
+minimum of 1.36 and maximum of 7.82, indicating substantial differences in perceived well-being across
+countries. **Log GDP per capita** is moderately concentrated around 1.38, while **social support** and
+**healthy life expectancy** show smaller ranges, suggesting these factors vary less between countries.
+**Freedom** and **perceptions of corruption** show moderate dispersion, and **generosity** is generally
+low with minimal variation.
+
+The correlation matrix shows the pairwise linear relationships among key variables. Life evaluation is
+most strongly associated with Log GDP (r = 0.76) and Social Support (r = 0.74), followed by Healthy Life
+(r = 0.67) and Freedom to make life choices (r = 0.56), indicating that higher economic prosperity,
+stronger social networks, better health, and greater freedom tend to correspond to higher life
+satisfaction across countries. In contrast, Generosity shows almost no linear association with Life 
+Evaluation (r = 0.07), suggesting it is not a meaningful predictor in this context. Among the explanatory variables, some moderate correlations exist. For example, Log GDP and Healthy Life are correlated at
+0.71. Though no pair of variables exceeds levels, they are typically considered problematic for multicollinearity. Overall, the matrix highlights which factors are most strongly related to Life
+Evaluation and supports the selection of Log GDP, Social Support, Healthy Life, Freedom, and Corruption
+as primary predictors in the regression analysis.
+
+
+## Exploratory Data Analysis
+
+```{r, warning = FALSE, echo = FALSE, message = FALSE}
+# install.packages("ggcorrplot")
+
+library(ggcorrplot)
+
+cor_mat <- round(cor(df[, c("life_eval","log_gdp","social_support","healthy_life",
+                            "freedom","generosity","corruption")]), 2)
+
+ggcorrplot(cor_mat, 
+           lab = TRUE,
+           title = "Correlation Heatmap of Key Variables",
+           ggtheme = ggplot2::theme_minimal())
+```
+
+To explore the relationships among the key variables in the World Happiness dataset, I began by examining
+a correlation heatmap. This visualization provides a compact view of linear associations and reveals 
+clear clusters among variables related to well-being. Life evaluation is strongly correlated with Log GDP per capita, social support, and healthy life expectancy, suggesting that economic and social conditions 
+are major contributors to national well-being. Freedom shows a moderate positive relationship, while 
+generosity and perceptions of corruption display weaker associations. These patterns indicate that GDP, 
+social support, and health are the most promising predictors to include in the regression model, while 
+generosity is unlikely to be influential.
+
+```{r, warning = FALSE, echo = FALSE, message = FALSE}
+library(ggplot2)
+
+ggplot(df, aes(x = log_gdp, y = life_eval)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "GDP per Capita vs Life Evaluation",
+       x = "Log GDP per Capita",
+       y = "Life Evaluation") +
+  theme_minimal()
+```
+The scatterplot shows a strong positive linear relationship between log GDP per capita and life 
+evaluation. Countries with higher economic prosperity correlate with higher levels of subjective 
+well-being. The fitted regression line slopes upward, and the data points cluster tightly around it, 
+suggesting that GDP is one of the strongest predictors of life evaluation. This visual reinforces the 
+idea that economic resources provide important foundations for well-being but may not fully explain 
+cross-national differences.
+
+```{r, warning = FALSE, echo = FALSE, message = FALSE}
+ggplot(df, aes(x = social_support, y = life_eval)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "Social Support vs Life Evaluation",
+       x = "Social Support",
+       y = "Life Evaluation") +
+  theme_minimal()
+```
+The plot demonstrates a moderate positive relationship between perceived freedom and life evaluation. 
+While the upward slope is clear, the points are more dispersed compared to previous variables. This 
+suggests that freedom meaningfully contributes to well-being, but its relationship is weaker and more 
+context-dependent. Still, the visual indicates that autonomy and perceived control over life decisions 
+are relevant predictors.
+
+```{r, warning = FALSE, echo = FALSE, message = FALSE}
+ggplot(df, aes(x = corruption, y = life_eval)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE) +
+  labs(title = "Perceptions of Corruption vs Life Evaluation",
+       x = "Perceptions of Corruption (Higher = Less Corruption)",
+       y = "Life Evaluation") +
+  theme_minimal()
+```
+This scatterplot shows a positive slope, indicating that lower perceived corruption is associated with 
+higher life evaluation. The relationship is weaker and more scattered, but the general pattern is upward. 
+This suggests that governance quality and institutional trust contribute to subjective well-being, 
+although the effect is smaller relative to GDP, social support, or health.
+
+
+# Statistical Analysis
+
+To evaluate the relationship between GDP per capita and life evaluation, I estimate a multiple linear 
+regression model that includes log GDP per capita as the main predictor and several theoretically 
+grounded confounders: social support, healthy life expectancy, freedom to make life choices, and 
+perceptions of corruption. These variables are included because they influence both national economic 
+conditions and subjective well-being, and therefore satisfy the structure of potential confounders 
+(log_gdp ← Z → life_eval).
+
+This specification allows us to isolate the association between GDP per capita and life evaluation while 
+accounting for key social and institutional factors. The resulting model provides evidence on whether GDP 
+per capita remains a significant predictor of life evaluation after adjusting for these confounding 
+influences.
+```{r, results='asis', echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+fit <- lm(life_eval ~ log_gdp + social_support + healthy_life + freedom + corruption, data = df)
+
+stargazer(fit,
+          type = "latex",
+          style = "ajps",
+          column.sep.width = "1pt",
+          title = "Regression analysis of Log GDP on Life Evaluation",
+          header = FALSE,
+          omit.stat=c("f", "ser"))
+```
+
+
+# Results Discussion
+
+The regression results provide strong evidence against the null hypothesis, indicating that GDP per 
+capita is positively associated with life evaluation even after accounting for major confounders. Log GDP 
+remains highly significant in all specifications, suggesting a robust relationship that does not 
+disappear once social support, healthy life expectancy, freedom, and corruption are included. This 
+consistency strengthens confidence that GDP captures a meaningful dimension of subjective well-being 
+across countries.
+
+
+At the same time, the results show that several non-economic factors contribute comparably or even more 
+strongly to life evaluation. Social support, freedom, health, and perceived corruption all remain 
+significant predictors in the fully adjusted model, underscoring that subjective well-being is 
+multidimensional rather than purely economic. The stability of these findings across specifications 
+indicates that the key associations are not driven by model choice or omitted-variable bias within the 
+available data.
+
+While the results are strong, they rely on cross-sectional comparisons between countries rather than 
+changes within countries over time. Future work could use panel or longitudinal data to examine whether 
+increases in GDP or improvements in social conditions lead to higher life evaluation within the same 
+country. Additional variables—such as more detailed health measures, cultural factors, or institutional 
+quality indicators—could also help clarify the mechanisms behind the observed relationships.
+
+
+# Conclusion
+
+This project examined the relationship between GDP per capita and life evaluation using World Happiness 
+Report data from 2021–2024 across 566 country-year observations. The research question asked whether 
+higher national income corresponds to higher subjective well-being, and the analysis incorporated major 
+confounders—social support, freedom, healthy life expectancy, and perceptions of corruption—to more 
+accurately estimate this relationship.
+
+The findings indicate strong support for the hypothesis: GDP per capita is positively and significantly 
+associated with life evaluation. However, the results also reveal that several social and institutional 
+factors play substantial and independent roles. Social support, health, freedom, and corruption are all 
+significant predictors, suggesting that economic conditions alone cannot fully explain cross-country 
+variation in well-being.
+
+Overall, the evidence supports the view that subjective well-being is shaped by a combination of economic
+prosperity and broader social and institutional environments. While GDP matters, countries with strong 
+social support systems, healthier populations, greater freedoms, and lower corruption tend to exhibit 
+higher life evaluations regardless of income levels. These findings reinforce the importance of 
+multidimensional policy approaches to improving national well-being.
